@@ -6,7 +6,6 @@ import os
 from collections import deque
 from heapq import *
 
-
 #This class defines the state of the problem in terms of board configuration
 class Board:
 	def __init__(self,tiles):
@@ -51,8 +50,8 @@ class Node:
 	def __eq__(self,other):
 		return self.state.tiles == other.state.tiles
 
-#This class defines idastar search problem
-class IdAstar:
+#This class defines astar search problem		
+class Astar:
 	def __init__(self,start,goal,heuristic):
 		self.root_node = start
 		self.goal_state = goal
@@ -60,37 +59,25 @@ class IdAstar:
 		self.node_expanded = 0
 		
 	def run(self):
-		bound = self.h_value(self.root_node)
-		self.in_path = [self.root_node]
-		i=0
-		while True:
-			self.node_expanded = 0
-			print("iteration: "+ str(i))
-			t = self.search(self.root_node,0,bound)
-			if isinstance(t,Node) :
-				return t,self.node_expanded
-			if t == 100000 : return "not_found"
-			bound = t
-			i+=1
-	def search(self,node,g,bound):
-		
-		
-		f_value = g + self.h_value(node)
-		if f_value > bound : return f_value
-		if self.goal_test(node.state.tiles) :
-			return node
-		min = 100000
-		for child in get_children(node):
-			if child in self.in_path : continue
-			self.in_path.append(child)
-			self.node_expanded+=1
-			t = self.search(child, g+1,bound)
-			if isinstance(t,Node) : 
-				return t
-			if t < min : min =t 
-			self.in_path.remove(child)
-		
-		return min
+		frontier = []
+		explored = []
+		heappush(frontier, (self.f_value(self.root_node), self.root_node))
+		expanded_node_count=0
+		while(len(frontier)>0):
+			
+			cur_node = heappop(frontier)[1] # we only need node , not the cost
+			expanded_node_count+=1
+			explored.append(cur_node)
+			if(self.goal_test(cur_node.state.tiles)):
+				path = find_path(cur_node)
+				return path,expanded_node_count
+			for child in get_children(cur_node):
+				if child in explored:
+					continue
+				else:
+					heappush(frontier, (self.f_value(child), child))
+		print("frontier empty")	
+		return False
 	
 	def f_value(self,node):
 		return node.cost + self.h_value(node)
@@ -100,7 +87,8 @@ class IdAstar:
 			return self.manhattan_heuristic(node)
 		else:
 			return self.misplaced_tiles_heuristic(node)
-			
+	
+	#This function calculates sum of manhattan distances of each tile from goal position
 	def manhattan_heuristic(self,node):
 		tiles = node.state.tiles
 		size = node.state.size
@@ -116,7 +104,8 @@ class IdAstar:
 			cur_distance = abs(correct_x-current_x) + abs(correct_y-current_y)
 			total_sum_distances += cur_distance
 		return total_sum_distances
-
+	
+	#This function calculates number of misplaced tiles from goal position
 	def misplaced_tiles_heuristic(self,node):
 		tiles = node.state.tiles
 		num_misplaced = 0
@@ -161,21 +150,22 @@ def find_path(node):
 #Main function accepting input from console , runnung bfs and showing output	
 def main():
 	process = psutil.Process(os.getpid())
-	initial_memory = process.memory_info()[0] / 1024.0
+	initial_memory = process.memory_info().rss / 1024.0
 	initial_time = time.time()
 	initial = str(raw_input("initial configuration: "))
 	initial_list = initial.split(" ")
 	root = Node(Board(initial_list),None,None)
 	goal_state = ['1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','0']	
-	idastar = IdAstar(root, goal_state,"manhattan")
-	solution = idastar.run()
+	astar = Astar(root, goal_state,"manhattan")
+	solution = astar.run()
 	final_time = time.time()
-	print("path: "+ str(find_path(solution[0])))
-	print("Nodes expanded: "+ str(solution[1]))
-	print("manhattan_heuristic: "+ str(idastar.manhattan_heuristic(root)))
-	print("misplaced_tiles_heuristic: "+ str(idastar.misplaced_tiles_heuristic(root)))
+	print("path: "+ str(solution[0]))
+	print("nodes_expanded:" + str(solution[1]))
+	#print("manhattan_heuristic: "+ str(astar.manhattan_heuristic(root)))
+	#print("misplaced_tiles_heuristic: "+ str(astar.misplaced_tiles_heuristic(root)))
+	
+	final_memory = process.memory_info().rss / 1024.0
 	print("time taken: "+str(final_time-initial_time))
-	final_memory = process.memory_info()[0] / 1024.0
 	print(str(final_memory-initial_memory)+" KB")
 	
 	
